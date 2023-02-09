@@ -158,3 +158,61 @@ class fortiConnect:
     def driverKill(self):
         os.kill(self.driver.service.process.pid, 9)
         return
+
+class monitorappWAF:
+    def __init__(self, url ,id, pw):
+        self.url = url
+        self.id = id
+        self.pw = pw
+
+    def webget(self):
+        self.ieoptions = webdriver.IeOptions()
+        self.ieoptions.ignore_protected_mode_settings = True
+        self.ieoptions.ignore_zoom_level = True
+        self.driver = webdriver.Ie(executable_path=IEDriverManager().install(), options=self.ieoptions)
+        self.driver.get(self.url)
+
+        # SSL 인증페이지 스킵
+        try:
+            self.driver.execute_script(script="document.getElementById('overridelink').click()")
+            self.driver.get(self.url)
+        except Exception:
+            pass
+
+        # 로그인정보 입력
+        self.driver.find_element(by='id', value="login_id").send_keys(self.id)
+        self.driver.find_element(by='id', value='login_passwd').send_keys(self.pw + '\n')
+        self.retMemory() # 메모리 반환
+
+    def retMemory(self):
+        # IEDriverServer 프로세스 종료
+        proc_name = "IEDriverServer"
+        for proc in psutil.process_iter():
+            if proc_name in proc.name():
+                os.kill(proc.pid, 9) 
+
+# 펜타시큐리티 WAPPLES 웹 콘솔 자동접속
+class webconsoleWAF:
+    def __init__(self, url, id, pw):
+        self.url = url
+        self.id = id
+        self.pw = pw
+
+        self.options = webdriver.ChromeOptions()
+        self.options.add_argument("--ignore-certificate-errors")
+        self.driver = webdriver.Chrome(ChromeDriverManager().install(),options=self.options)
+
+    def teardown(self):
+        self.driver.quit()
+
+    def webget(self):
+        self.driver.get(self.url)
+        self.driver.find_element(by='name', value='user_id').send_keys(self.id)
+        self.driver.find_element(by='name', value='user_pw').send_keys(self.pw)
+        self.driver.find_element(by='id', value='login_submit').click()
+        self.driver.get(self.url + "/dashboard/summary")
+        self.driverKill()
+
+    def driverKill(self):
+        os.kill(self.driver.service.process.pid, 9)
+        return
